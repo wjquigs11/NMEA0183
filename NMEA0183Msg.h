@@ -49,7 +49,8 @@ inline bool NMEA0183IsNA(int32_t v) { return v==NMEA0183Int32NA; }
 inline bool NMEA0183IsNA(int64_t v) { return v==NMEA0183Int64NA; }
 inline bool NMEA0183IsTimeNA(time_t v) { return v==NMEA0183time_tNA; }
 
-#define MAX_NMEA0183_MSG_LEN 81  // According to NMEA 3.01. Can not contain multi message as in AIS
+//#define MAX_NMEA0183_MSG_LEN 81  // According to NMEA 3.01. Can not contain multi message as in AIS
+#define MAX_NMEA0183_MSG_LEN 181
 #define MAX_NMEA0183_MSG_FIELDS 20
 
 #ifndef _Time_h
@@ -62,7 +63,7 @@ class tNMEA0183Msg
   protected:
     static const char *const EmptyField;
     unsigned long _MessageTime;
-    char Data[MAX_NMEA0183_MSG_LEN];
+    //char Data[MAX_NMEA0183_MSG_LEN];
     uint8_t iAddData;
     char Prefix;
     uint8_t Fields[MAX_NMEA0183_MSG_FIELDS];
@@ -113,6 +114,7 @@ class tNMEA0183Msg
     static const char *const DefDoubleFormat;
 
   public:
+    char Data[MAX_NMEA0183_MSG_LEN];    // hack
     tNMEA0183Msg();
     // Set message from received null terminated buffer. Returns true if checksum is OK.
     bool SetMessage(const char *buf);

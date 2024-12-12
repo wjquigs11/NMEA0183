@@ -90,36 +90,44 @@ bool tNMEA0183::GetMessage(tNMEA0183Msg &NMEA0183Msg) {
   if ( !IsOpen() ) return false;
 
   bool result=false;
-
   while (port->available() > 0 && !result) {
-    int NewByte=port->read();
-      if (NewByte=='$' || NewByte=='!') { // Message start
-        MsgInStarted=true;
-        MsgInPos=0;
-        MsgInBuf[MsgInPos]=NewByte;
-        MsgInPos++;
-      } else if (MsgInStarted) {
-        MsgInBuf[MsgInPos]=NewByte;
-        if (NewByte=='*') MsgCheckSumStartPos=MsgInPos;
-        MsgInPos++;
-        if (MsgCheckSumStartPos!=SIZE_MAX and MsgCheckSumStartPos+3==MsgInPos) { // We have full checksum and so full message
-            MsgInBuf[MsgInPos]=0; // add null termination
-          if (NMEA0183Msg.SetMessage(MsgInBuf)) {
-            NMEA0183Msg.SourceID=SourceID;
-            result=true;
-          }
-          MsgInStarted=false;
-          MsgInPos=0;
-          MsgCheckSumStartPos=SIZE_MAX;
-        }
-        if (MsgInPos>=MAX_NMEA0183_MSG_BUF_LEN) { // Too may chars in message. Start from beginning
-          MsgInStarted=false;
-          MsgInPos=0;
-          MsgCheckSumStartPos=SIZE_MAX;
-        }
+    int NewByte = port->read();
+    if (NewByte == '$' || NewByte == '!' || NewByte == '#') { // add # for proprietary sentences
+      MsgInStarted = true;
+      MsgInPos = 0;
+      MsgInBuf[MsgInPos] = NewByte;
+      MsgInPos++;
+    } else if (MsgInStarted) {
+      MsgInBuf[MsgInPos] = NewByte;
+      if (NewByte == '*') {
+        MsgCheckSumStartPos = MsgInPos;
       }
+      MsgInPos++;
+      
+      // Check for line ending characters
+      if (NewByte == '\r' || NewByte == '\n') {
+        MsgInBuf[MsgInPos] = 0; // Null-terminate the string
+        if (MsgCheckSumStartPos != SIZE_MAX && MsgInPos > MsgCheckSumStartPos + 2) {
+          //result = true;
+          //Serial.printf("buf: %s\n", MsgInBuf);
+          if (NMEA0183Msg.SetMessage(MsgInBuf)) {
+            NMEA0183Msg.SourceID = SourceID;
+            result = true;
+          }
+        }
+        MsgInStarted = false;
+        MsgInPos = 0;
+        MsgCheckSumStartPos = SIZE_MAX;
+      }
+      
+      if (MsgInPos >= MAX_NMEA0183_MSG_BUF_LEN) {
+        MsgInBuf[MAX_NMEA0183_MSG_BUF_LEN] = 0;
+        MsgInStarted = false;
+        MsgInPos = 0;
+        MsgCheckSumStartPos = SIZE_MAX;
+      }
+    }
   }
-
   return result;
 }
 

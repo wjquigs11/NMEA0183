@@ -29,7 +29,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "NMEA0183Stream.h"
 #include "NMEA0183Msg.h"
 
-#define MAX_NMEA0183_MSG_BUF_LEN 81  // According to NMEA 3.01. Can not contain multi message as in AIS
+//#define MAX_NMEA0183_MSG_BUF_LEN 81  // According to NMEA 3.01. Can not contain multi message as in AIS
+#define MAX_NMEA0183_MSG_BUF_LEN 181  // According to NMEA 3.01. Can not contain multi message as in AIS
 
 class tNMEA0183
 {

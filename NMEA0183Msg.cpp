@@ -71,55 +71,62 @@ bool tNMEA0183Msg::SetMessage(const char *buf) {
   Clear();
   _MessageTime=millis();
 
-  if ( buf[i]!='$' &&  buf[i]!='!' ) return result; // Invalid message
+  if ( buf[i]!='$' && buf[i]!='!' && buf[i] != '#') return result; // Invalid message
   Prefix=buf[i];
   i++; // Pass start prefix
 
-//  Serial.println(buf);
-  // Set sender
-  for (; iData<2 && buf[i]!=0; i++, iData++) {
-    CheckSum^=buf[i];
-    Data[iData]=buf[i];
+  if (buf[0] == '#') {  // proprietary
+    for (; buf[i]!='*' && buf[i]!=0 && iData<MAX_NMEA0183_MSG_LEN; i++, iData++) {
+      Data[iData]=buf[i];
+    }
+    Data[iData] = 0;
+    result = true;
   }
 
-  if (buf[i]==0) { Clear(); return result; } // Invalid message
+  if ( buf[0]=='$' || buf[0]=='!') {  // non-proprietary
+    for (; iData<2 && buf[i]!=0; i++, iData++) {
+      CheckSum^=buf[i];
+      Data[iData]=buf[i];
+    }
 
-  Data[iData]=0; iData++; // null termination for sender
-  // Set message code. Read until next comma
-  for (; buf[i]!=',' && buf[i]!=0 && iData<MAX_NMEA0183_MSG_LEN; i++, iData++) {
-    CheckSum^=buf[i];
-    Data[iData]=buf[i];
-  }
-  if (buf[i]!=',') { Clear(); return result; } // No separation after message code -> invalid message
+    if (buf[i]==0) { Clear(); return result; } // Invalid message
 
-  // Set the data and calculate checksum. Read until '*'
-  for (; buf[i]!='*' && buf[i]!=0 && iData<MAX_NMEA0183_MSG_LEN; i++, iData++) {
-    CheckSum^=buf[i];
-    Data[iData]=buf[i];
-    if (buf[i]==',') { // New field
-      Data[iData]=0; // null termination for previous field
-      if (_FieldCount >= MAX_NMEA0183_MSG_FIELDS ) {
-        Clear();
-        return false;
+    Data[iData]=0; iData++; // null termination for sender
+    // Set message code. Read until next comma
+    for (; buf[i]!=',' && buf[i]!=0 && iData<MAX_NMEA0183_MSG_LEN; i++, iData++) {
+      CheckSum^=buf[i];
+      Data[iData]=buf[i];
+    }
+    if (buf[i]!=',') { Clear(); return result; } // No separation after message code -> invalid message
+
+    // Set the data and calculate checksum. Read until '*'
+    for (; buf[i]!='*' && buf[i]!=0 && iData<MAX_NMEA0183_MSG_LEN; i++, iData++) {
+      CheckSum^=buf[i];
+      Data[iData]=buf[i];
+      if (buf[i]==',') { // New field
+        Data[iData]=0; // null termination for previous field
+        if (_FieldCount >= MAX_NMEA0183_MSG_FIELDS ) {
+          Clear();
+          return false;
+        }
+        Fields[_FieldCount]=iData+1;   // Set start of field
+        _FieldCount++;
       }
-      Fields[_FieldCount]=iData+1;   // Set start of field
-      _FieldCount++;
+    }
+    if (buf[i]!='*') { Clear(); return false; } // No checksum -> invalid message
+    Data[iData]=0; // null termination for previous field
+    i++; // Pass '*';
+    // Added test to allow lower case chcksum.
+    csMsg=(buf[i]<=57?buf[i]-48:(buf[i]<=70?buf[i]-55:buf[i]-87))<<4; i++;
+    csMsg|=(buf[i]<=57?buf[i]-48:(buf[i]<=70?buf[i]-55:buf[i]-87));
+
+    if (csMsg==CheckSum) {
+      result=true;
+    } else {
+      Clear();  // not clearing in case it's proprietary
     }
   }
-
-  if (buf[i]!='*') { Clear(); return false; } // No checksum -> invalid message
-  Data[iData]=0; // null termination for previous field
-  i++; // Pass '*';
-  // Added test to allow lower case chcksum.
-  csMsg=(buf[i]<=57?buf[i]-48:(buf[i]<=70?buf[i]-55:buf[i]-87))<<4; i++;
-  csMsg|=(buf[i]<=57?buf[i]-48:(buf[i]<=70?buf[i]-55:buf[i]-87));
-
-  if (csMsg==CheckSum) {
-    result=true;
-  } else {
-    Clear();
-  }
-
+  //Serial.println("setmessage out");
   return result;
 }
 
